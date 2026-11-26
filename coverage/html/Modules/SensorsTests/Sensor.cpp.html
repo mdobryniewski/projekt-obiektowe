@@ -1,0 +1,159 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+        <meta charset="utf-8"/>
+	    <title>Sensor.cpp</title>
+	    <link href="../../third-party/google-code-prettify/prettify-CppCoverage.css" type="text/css" rel="stylesheet" />
+	    <script type="text/javascript" src="../../third-party/google-code-prettify/prettify.js"></script>
+	</head>
+    <body onload="prettyPrint()">
+        <h4></h4>
+        <pre class="prettyprint lang-cpp linenums">
+#include "Sensor.h"
+#include &lt;iostream&gt;
+#include &lt;fstream&gt;
+#include &lt;algorithm&gt;
+#include &lt;utility&gt;
+
+<span style = "background-color:#dfd">Sensor::~Sensor() {
+    delete[] samples;
+}</span>
+
+<span style = "background-color:#dfd">bool Sensor::isValid(double value) const {
+    return (value &gt;= minValue &amp;&amp; value &lt;= maxValue);
+}</span>
+
+<span style = "background-color:#dfd">void Sensor::pushMeasurement(double val) {
+    if (isValid(val)) {
+        measurements.push_back(val);
+    }</span>
+    else {
+<span style = "background-color:#dfd">        Logger::instance().warn(getName() + ": Pominieto wartosc poza zakresem (" + std::to_string(val) + ")");</span>
+    }
+<span style = "background-color:#dfd">}</span>
+
+Sensor::Sensor(double minV, double maxV)
+<span style = "background-color:#dfd">    : samples(nullptr), sampleCount(0), minValue(minV), maxValue(maxV) {
+}</span>
+
+Sensor::Sensor(const Sensor&amp; other)
+<span style = "background-color:#dfd">    : measurements(other.measurements), sampleCount(other.sampleCount), minValue(other.minValue), maxValue(other.maxValue) {
+    if (sampleCount &gt; 0 &amp;&amp; other.samples != nullptr) {
+        samples = new double[sampleCount];
+        std::copy(other.samples, other.samples + sampleCount, samples);
+    }</span>
+    else {
+<span style = "background-color:#dfd">        samples = nullptr;</span>
+    }
+<span style = "background-color:#dfd">}</span>
+
+Sensor::Sensor(Sensor&amp;&amp; other) noexcept
+<span style = "background-color:#dfd">    : measurements(std::move(other.measurements)),
+    samples(other.samples),
+    sampleCount(other.sampleCount),
+    minValue(other.minValue),
+    maxValue(other.maxValue) {
+    other.samples = nullptr;
+    other.sampleCount = 0;
+}</span>
+
+<span style = "background-color:#dfd">Sensor&amp; Sensor::operator=(const Sensor&amp; other) {
+    if (this != &amp;other) {
+        delete[] samples;
+        measurements = other.measurements;
+        sampleCount = other.sampleCount;
+        minValue = other.minValue;
+        maxValue = other.maxValue;
+        if (sampleCount &gt; 0 &amp;&amp; other.samples != nullptr) {
+            samples = new double[sampleCount];
+            std::copy(other.samples, other.samples + sampleCount, samples);
+        }</span>
+        else {
+<span style = "background-color:#fdd">            samples = nullptr;</span>
+        }
+    }
+<span style = "background-color:#dfd">    return *this;
+}</span>
+
+<span style = "background-color:#dfd">Sensor&amp; Sensor::operator=(Sensor&amp;&amp; other) noexcept {
+    if (this != &amp;other) {
+        delete[] samples;
+        measurements = std::move(other.measurements);
+        samples = other.samples;
+        sampleCount = other.sampleCount;
+        minValue = other.minValue;
+        maxValue = other.maxValue;</span>
+
+<span style = "background-color:#dfd">        other.samples = nullptr;
+        other.sampleCount = 0;</span>
+    }
+<span style = "background-color:#dfd">    return *this;
+}</span>
+
+<span style = "background-color:#dfd">void Sensor::read_data(const std::string&amp; meas_file, const std::string&amp; samp_file) {
+    std::ifstream f_meas(meas_file);
+    if (f_meas.is_open()) {
+        std::string line;
+        while (std::getline(f_meas, line)) {
+            if (line.empty()) continue;</span>
+
+<span style = "background-color:#dfd">            size_t pos = line.find(';');
+            std::string valStr = (pos != std::string::npos) ? line.substr(pos + 1) : line;</span>
+
+            try {
+<span style = "background-color:#dfd">                double val = std::stod(valStr);
+                pushMeasurement(val);</span>
+            }
+<span style = "background-color:#dfd">            catch (...) {
+            }
+        }
+        Logger::instance().info(getName() + ": Poprawnie wczytano pomiary z " + meas_file);
+    }</span>
+    else {
+<span style = "background-color:#dfd">        Logger::instance().error(getName() + ": Nie udalo sie otworzyc pliku " + meas_file);</span>
+    }
+
+<span style = "background-color:#dfd">    if (!samp_file.empty()) {
+        std::ifstream f_samp(samp_file);
+        std::vector&lt;double&gt; tempSamples;
+        if (f_samp.is_open()) {</span>
+            double val;
+<span style = "background-color:#dfd">            while (f_samp &gt;&gt; val) tempSamples.push_back(val);
+            Logger::instance().info(getName() + ": Poprawnie wczytano probki kalibracyjne.");</span>
+
+<span style = "background-color:#dfd">            delete[] samples;
+            sampleCount = static_cast&lt;int&gt;(tempSamples.size());
+            if (sampleCount &gt; 0) {
+                samples = new double[sampleCount];
+                std::copy(tempSamples.begin(), tempSamples.end(), samples);</span>
+            }
+<span style = "background-color:#dfd">        }</span>
+        else {
+<span style = "background-color:#dfd">            Logger::instance().error(getName() + ": Nie udalo sie otworzyc pliku " + samp_file);</span>
+        }
+<span style = "background-color:#dfd">    }
+}</span>
+
+<span style = "background-color:#dfd">void Sensor::displayLast() const {
+    if (!measurements.empty()) {
+        std::cout &lt;&lt; "Ostatni pomiar " &lt;&lt; getName() &lt;&lt; ": " &lt;&lt; measurements.back() &lt;&lt; "\n";
+    }</span>
+    else {
+<span style = "background-color:#dfd">        std::cout &lt;&lt; "Brak pomiarow " &lt;&lt; getName() &lt;&lt; ".\n";</span>
+    }
+<span style = "background-color:#dfd">}</span></pre>
+        <hr />
+        <table width="100%">
+            <thead>
+                <tr>
+                    <th align="center">
+                        <small>Generated by</small>
+                        <a href="https://github.com/OpenCppCoverage/OpenCppCoverage/releases">
+                            <strong>OpenCppCoverage (Version: 0.9.9.0)</strong>
+                        </a>
+                    </th>
+                </tr>
+            </thead>
+        </table>
+    </body>
+</html>
