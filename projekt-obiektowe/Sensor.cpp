@@ -4,9 +4,7 @@
 #include <algorithm>
 #include <utility>
 
-Sensor::~Sensor() {
-    delete[] samples;
-}
+Sensor::~Sensor() = default;
 
 bool Sensor::isValid(double value) const {
     return (value >= minValue && value <= maxValue);
@@ -28,37 +26,32 @@ Sensor::Sensor(double minV, double maxV)
 Sensor::Sensor(const Sensor& other)
     : measurements(other.measurements), sampleCount(other.sampleCount), minValue(other.minValue), maxValue(other.maxValue) {
     if (sampleCount > 0 && other.samples != nullptr) {
-        samples = new double[sampleCount];
-        std::copy(other.samples, other.samples + sampleCount, samples);
-    }
-    else {
-        samples = nullptr;
+        samples = std::make_unique<double[]>(sampleCount);
+        std::copy(other.samples.get(), other.samples.get() + sampleCount, samples.get());
     }
 }
 
 Sensor::Sensor(Sensor&& other) noexcept
     : measurements(std::move(other.measurements)),
-    samples(other.samples),
+    samples(std::move(other.samples)),
     sampleCount(other.sampleCount),
     minValue(other.minValue),
     maxValue(other.maxValue) {
-    other.samples = nullptr;
     other.sampleCount = 0;
 }
 
 Sensor& Sensor::operator=(const Sensor& other) {
     if (this != &other) {
-        delete[] samples;
         measurements = other.measurements;
         sampleCount = other.sampleCount;
         minValue = other.minValue;
         maxValue = other.maxValue;
         if (sampleCount > 0 && other.samples != nullptr) {
-            samples = new double[sampleCount];
-            std::copy(other.samples, other.samples + sampleCount, samples);
+            samples = std::make_unique<double[]>(sampleCount);
+            std::copy(other.samples.get(), other.samples.get() + sampleCount, samples.get());
         }
         else {
-            samples = nullptr;
+            samples.reset();
         }
     }
     return *this;
@@ -66,14 +59,12 @@ Sensor& Sensor::operator=(const Sensor& other) {
 
 Sensor& Sensor::operator=(Sensor&& other) noexcept {
     if (this != &other) {
-        delete[] samples;
         measurements = std::move(other.measurements);
-        samples = other.samples;
+        samples = std::move(other.samples);
         sampleCount = other.sampleCount;
         minValue = other.minValue;
         maxValue = other.maxValue;
 
-        other.samples = nullptr;
         other.sampleCount = 0;
     }
     return *this;
@@ -110,11 +101,13 @@ void Sensor::read_data(const std::string& meas_file, const std::string& samp_fil
             while (f_samp >> val) tempSamples.push_back(val);
             Logger::instance().info(getName() + ": Poprawnie wczytano probki kalibracyjne.");
 
-            delete[] samples;
             sampleCount = static_cast<int>(tempSamples.size());
             if (sampleCount > 0) {
-                samples = new double[sampleCount];
-                std::copy(tempSamples.begin(), tempSamples.end(), samples);
+                samples = std::make_unique<double[]>(sampleCount);
+                std::copy(tempSamples.begin(), tempSamples.end(), samples.get());
+            }
+            else {
+                samples.reset();
             }
         }
         else {

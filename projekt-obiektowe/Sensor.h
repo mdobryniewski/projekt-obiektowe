@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <memory>
 #include "Logger.h"
 
 class Sensor {
@@ -9,7 +10,7 @@ private:
 
 protected:
     std::vector<double> measurements;
-    double* samples;
+    std::unique_ptr<double[]> samples;
     int sampleCount;
     double minValue;
     double maxValue;
@@ -30,6 +31,5 @@ public:
     void read_data(const std::string& meas_file, const std::string& samp_file = "");
     void displayLast() const;
 
-    // Pomocniczy getter przydatny w testach jednostkowych
     const std::vector<double>& getMeasurements() const { return measurements; }
 };
