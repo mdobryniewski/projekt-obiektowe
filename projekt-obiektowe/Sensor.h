@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <ostream>
 #include "Logger.h"
 
 class Sensor {
@@ -32,4 +33,9 @@ public:
     void displayLast() const;
 
     const std::vector<double>& getMeasurements() const { return measurements; }
+
+    friend std::ostream& operator<<(std::ostream& os, const Sensor& sensor) {
+        os << sensor.getName();
+        return os;
+    }
 };

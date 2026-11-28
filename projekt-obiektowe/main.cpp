@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <regex>
 #include <map>
+#include <memory>
 
 #include "Logger.h"
 #include "Properties.h"
@@ -181,8 +182,13 @@ int main(int argc, char* argv[]) {
     std::cout << "\n--- Inicjalizacja Meter ---\n";
     TempSensor sampleTemp = sensory.empty() ? TempSensor("Brak", tempMin, tempMax) : sensory[0];
 
-    Meter mainMeter(std::move(ph), sampleTemp, std::move(no3));
-    Logger::instance().info("Miernik zlozony (Kompozycja zakonczona sukcesem).");
+    Meter mainMeter;
+    mainMeter += std::make_unique<PHSensor>(std::move(ph));
+    mainMeter += std::make_unique<TempSensor>(sampleTemp);
+    mainMeter += std::make_unique<NO3Sensor>(std::move(no3));
+
+    std::cout << "Sensory w mierniku:\n" << mainMeter;
+    Logger::instance().info("Miernik zlozony (dodano sensory przez operator+=).");
 
     return 0;
 }

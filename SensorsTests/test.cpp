@@ -1,5 +1,6 @@
 #include "pch.h"
 #include <fstream>
+#include <sstream>
 #include "../projekt-obiektowe/PHSensor.h"
 #include "../projekt-obiektowe/NO3Sensor.h"
 #include "../projekt-obiektowe/TempSensor.h"
@@ -54,12 +55,34 @@ TEST(TempSensorTest, SetTemperaturaValidAndInvalid) {
     EXPECT_DOUBLE_EQ(temp.temperatura, 22.5);
 }
 
-TEST(MeterTest, CompositionCreation) {
+TEST(SensorStreamTest, OutputOperatorPrintsName) {
     PHSensor ph(4.0, 9.0);
-    TempSensor temp("T1", 0.0, 40.0);
-    NO3Sensor no3(0.0, 300.0);
+    std::ostringstream oss;
+    oss << ph;
+    EXPECT_EQ(oss.str(), "PHSensor");
+}
 
-    EXPECT_NO_THROW({
-        Meter m(std::move(ph), temp, std::move(no3));
-        });
+TEST(MeterTest, OperatorsAddFindRemoveAndStream) {
+    Meter m;
+    m += std::make_unique<PHSensor>(4.0, 9.0);
+    m += std::make_unique<TempSensor>("T1", 0.0, 40.0);
+    m += std::make_unique<NO3Sensor>(0.0, 300.0);
+
+    EXPECT_EQ(m.getSensorCount(), 3);
+
+    // Test operator[]
+    Sensor* foundPh = m["PHSensor"];
+    ASSERT_NE(foundPh, nullptr);
+    EXPECT_EQ(foundPh->getName(), "PHSensor");
+    EXPECT_EQ(m["Nieistniejacy"], nullptr);
+
+    // Test operator<<
+    std::ostringstream oss;
+    oss << m;
+    EXPECT_EQ(oss.str(), "PHSensor\nTempSensor (T1)\nNO3Sensor\n");
+
+    // Test operator-=
+    m -= "TempSensor (T1)";
+    EXPECT_EQ(m.getSensorCount(), 2);
+    EXPECT_EQ(m["TempSensor (T1)"], nullptr);
 }
